@@ -1,0 +1,92 @@
+# Gree "I Feel" IR kódtábla, 20–29 °C
+
+Gree YBEF1FB6 távirányító "I Feel" hőmérséklet-keretei. Egy keret = fejléc + 16 bit (`T`, `0xA5`, LSB először). A klíma csak egész fokot fogad.
+
+- Vivő: **38 kHz**
+- Fejléc: jel 6000 µs, szünet 3000 µs
+- Bit: jel 630 µs, szünet 575 µs (0) vagy 1675 µs (1)
+- Záró jel: 630 µs
+- A keretet **2 percenként** kell ismételni (a távirányító 10 percenként küld; az ESP 2 percenként)
+
+## Összefoglaló tábla
+
+| °C | `T` bájt | Broadlink (base64) |
+|---|---|---|
+| 20 | `0x14` | `JgAlAMVjFRMVExU3FRMVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 21 | `0x15` | `JgAlAMVjFTcVExU3FRMVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 22 | `0x16` | `JgAlAMVjFRMVNxU3FRMVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 23 | `0x17` | `JgAlAMVjFTcVNxU3FRMVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 24 | `0x18` | `JgAlAMVjFRMVExUTFTcVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 25 | `0x19` | `JgAlAMVjFTcVExUTFTcVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 26 | `0x1A` | `JgAlAMVjFRMVNxUTFTcVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 27 | `0x1B` | `JgAlAMVjFTcVNxUTFTcVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 28 | `0x1C` | `JgAlAMVjFRMVExU3FTcVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+| 29 | `0x1D` | `JgAlAMVjFTcVExU3FTcVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU=` |
+
+## Nyers időzítések (µs, + jel / − szünet)
+
+Az első elem jel (mark), utána jel és szünet váltakozik; a negatív szám a szünet (space). Ez az ESPHome `transmit_raw` formátum.
+
+```
+20 °C (0x14):
+[6000, -3000, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+21 °C (0x15):
+[6000, -3000, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+22 °C (0x16):
+[6000, -3000, 630, -575, 630, -1675, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+23 °C (0x17):
+[6000, -3000, 630, -1675, 630, -1675, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+24 °C (0x18):
+[6000, -3000, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+25 °C (0x19):
+[6000, -3000, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+26 °C (0x1A):
+[6000, -3000, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+27 °C (0x1B):
+[6000, -3000, 630, -1675, 630, -1675, 630, -575, 630, -1675, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+28 °C (0x1C):
+[6000, -3000, 630, -575, 630, -575, 630, -1675, 630, -1675, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+29 °C (0x1D):
+[6000, -3000, 630, -1675, 630, -575, 630, -1675, 630, -1675, 630, -1675, 630, -575, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630, -575, 630, -575, 630, -1675, 630, -575, 630, -1675, 630]
+
+```
+
+## Nyers időzítések, csak pozitív értékek (µs)
+
+Jel/szünet váltakozva, az első elem jel. Ez a Flipper, IRremote és hasonló eszközök formátuma.
+
+```
+20 °C: 6000 3000 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+21 °C: 6000 3000 630 1675 630 575 630 1675 630 575 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+22 °C: 6000 3000 630 575 630 1675 630 1675 630 575 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+23 °C: 6000 3000 630 1675 630 1675 630 1675 630 575 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+24 °C: 6000 3000 630 575 630 575 630 575 630 1675 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+25 °C: 6000 3000 630 1675 630 575 630 575 630 1675 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+26 °C: 6000 3000 630 575 630 1675 630 575 630 1675 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+27 °C: 6000 3000 630 1675 630 1675 630 575 630 1675 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+28 °C: 6000 3000 630 575 630 575 630 1675 630 1675 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+29 °C: 6000 3000 630 1675 630 575 630 1675 630 1675 630 1675 630 575 630 575 630 575 630 1675 630 575 630 1675 630 575 630 575 630 1675 630 575 630 1675 630
+```
+
+## Broadlink használat Home Assistantban
+
+A Broadlink-kódok a standard Broadlink IR csomagformátumban vannak (egység 269/8192 s ≈ 32,8 µs, a végén `0D 05` lezárás). Home Assistantban a `remote.send_command` szolgáltatással küldhetők, `b64:` előtaggal:
+
+```yaml
+service: remote.send_command
+target:
+  entity_id: remote.broadlink_rm_mini
+data:
+  command: "b64:JgAlAMVjFRMVExU3FRMVNxUTFRMVExU3FRMVNxUTFRMVNxUTFTcVDQU="   # 20 °C
+```
+
+Hőmérséklet szerinti választáshoz egy HA sablon használható, amely a fenti tábla alapján választ kódot, és egy automatizmus ismétli 2 percenként. A Broadlink-kódok megfelelőségét a saját mérésem szerinti keretből generáltam és visszafejtéssel ellenőriztem, magán a Broadlink eszközön nem próbáltam ki.
