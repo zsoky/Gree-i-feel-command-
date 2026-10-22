@@ -1,5 +1,7 @@
 # Gree "I Feel" hőmérséklet-küldő (ESP32-C3 + ESPHome)
 
+[English version](README.en.md)
+
 Egy kis ESP32-C3 alapú eszköz, ami a Home Assistantban lévő szobahőmérséklet-szenzor értékét infravörösen elküldi egy Gree klímának, **pontosan úgy, ahogy a távirányító "I Feel" funkciója teszi**. Így a klíma nem a magasan, a készülékházban lévő saját érzékelője alapján szabályoz, hanem egy általad választott (például alacsonyan, a szoba közepén elhelyezett) szenzor alapján.
 
 Miért jó ez?
@@ -107,3 +109,4 @@ Tippek a súlyozáshoz: a klíma saját terének szenzora kapjon nagyobb súlyt,
 | `secrets.yaml.example` | A titkos értékek mintája (WiFi, API kulcs, AP jelszó) |
 | `homeassistant-templates.yaml` | Példa HA sablon szenzor a súlyozott átlaghoz |
 | `.gitignore` | Kizárja a `secrets.yaml` fájlt és a buildfájlokat |
+| `README.en.md` | Az angol nyelvű leírás |
