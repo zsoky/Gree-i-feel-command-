@@ -1,0 +1,29 @@
+# Példa: súlyozott átlag szenzor a Home Assistantban (configuration.yaml-ba, vagy
+# Segédek → Sablon → Szenzor alatt a "state" részt bemásolva).
+#
+# Az entitásnevek csak példák, cseréld a sajátjaidra. A nem elérhető szenzorokat
+# kihagyja, és a súlyokat a maradékra újraosztja. Ha egyik szenzor sem ad számot,
+# az eredmény "unavailable", és az ESP ilyenkor nem küld keretet.
+#
+# Mentés után: Developer tools → YAML → Template entities újratöltése.
+template:
+  - sensor:
+      - name: "I Feel nappali"
+        unique_id: ifeel_nappali
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: |
+          {% set items = [
+            ('sensor.nappali_padlo_temperature', 0.45),
+            ('sensor.halo_temperature', 0.30),
+            ('sensor.eloszoba_temperature', 0.25),
+          ] %}
+          {% set ns = namespace(s=0, w=0) %}
+          {% for e, w in items %}
+            {% if is_number(states(e)) %}
+              {% set ns.s = ns.s + states(e) | float * w %}
+              {% set ns.w = ns.w + w %}
+            {% endif %}
+          {% endfor %}
+          {{ (ns.s / ns.w) | round(2) if ns.w > 0 else 'unavailable' }}

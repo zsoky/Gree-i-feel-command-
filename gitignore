@@ -1,0 +1,5 @@
+# Titkok és buildfájlok
+secrets.yaml
+.esphome/
+*.bin
+__pycache__/

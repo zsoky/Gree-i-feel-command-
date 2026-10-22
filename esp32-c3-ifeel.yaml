@@ -1,0 +1,183 @@
+# Gree "I Feel" hőmérséklet-küldő – ESP32-C3 Super Mini + ESPHome
+#
+# A Home Assistantból átvett szobahőmérsékletet 2 percenként elküldi infravörösen
+# a Gree klímának, mintha a távirányító "I Feel" funkciója küldené.
+#
+# Több eszköz esetén (pl. két klíma) másold le a fájlt, és minden példányban
+# írd át a "substitutions" blokkot. A titkos értékek a secrets.yaml fájlban vannak
+# (lásd secrets.yaml.example).
+
+substitutions:
+  name: esp32-c3-1
+  friendly_name: ESP32-C3-1
+  # A HA-beli szenzor, aminek az értékét a klímának küldjük
+  source_sensor: sensor.livingroom_avg
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      # Indulás után várunk, hogy a WiFi, az API és a HA szenzor értéke megérkezzen
+      - delay: 90s
+      - script.execute: send_ifeel_sensor
+
+esp32:
+  variant: esp32c3
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback Hotspot"
+    password: !secret ap_password
+    ap_timeout: 5min
+  min_auth_mode: WPA2
+  power_save_mode: NONE
+  fast_connect: false
+  enable_rrm: false
+  enable_btm: false
+  # Az ESP32-C3 Super Mini egyes példányainál ez szünteti meg az "Auth Expired" hibát
+  output_power: 8.5dB
+captive_portal:
+
+globals:
+  - id: last_sent_ms
+    type: uint32_t
+    initial_value: '0'
+  - id: has_sent
+    type: bool
+    initial_value: 'false'
+
+sensor:
+  # Hőmérséklet a Home Assistantból
+  - platform: homeassistant
+    id: room_temp
+    entity_id: ${source_sensor}
+    internal: true
+
+  # A klímának utoljára küldött hőmérséklet
+  - platform: template
+    id: ifeel_last_sent
+    name: "I Feel utoljára küldött"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 0
+    icon: mdi:thermometer-check
+
+  # Az utolsó küldés óta eltelt idő (perc)
+  - platform: template
+    id: ifeel_elapsed
+    name: "I Feel eltelt idő"
+    unit_of_measurement: "min"
+    accuracy_decimals: 0
+    icon: mdi:timer-outline
+    update_interval: 30s
+    lambda: |-
+      if (!id(has_sent)) return NAN;
+      return floorf((millis() - id(last_sent_ms)) / 60000.0f);
+
+number:
+  # Offset, ami hozzáadódik a mért értékhez a klímának küldés előtt
+  - platform: template
+    id: ifeel_offset
+    name: "I Feel offset"
+    icon: mdi:thermometer-plus
+    unit_of_measurement: "°C"
+    min_value: -10
+    max_value: 10
+    step: 0.5
+    initial_value: 0
+    optimistic: true
+    restore_value: true
+    mode: box
+
+button:
+  # Azonnali küldés
+  - platform: template
+    name: "I Feel azonnali küldés"
+    icon: mdi:send
+    on_press:
+      - script.execute: send_ifeel_sensor
+
+remote_transmitter:
+  - id: remote_transmitter_1
+    pin: GPIO5
+    carrier_duty_percent: 50%
+
+script:
+  # Egy darab "I Feel" keret küldése: fejléc + 16 bit (hőmérséklet, 0xA5), LSB először
+  - id: send_ifeel_frame
+    mode: restart
+    parameters:
+      t: int
+    then:
+      - remote_transmitter.transmit_raw:
+          transmitter_id: remote_transmitter_1
+          carrier_frequency: 38kHz
+          code: !lambda |-
+            int v = t;
+            if (v < 5) v = 5;
+            if (v > 45) v = 45;
+            std::vector<int32_t> c;
+            c.push_back(6000);
+            c.push_back(-3000);
+            uint8_t bytes[2] = {(uint8_t) v, 0xA5};
+            for (int k = 0; k < 2; k++) {
+              for (int j = 0; j < 8; j++) {
+                c.push_back(630);
+                c.push_back(((bytes[k] >> j) & 1) ? -1675 : -575);
+              }
+            }
+            c.push_back(630);
+            return c;
+      - logger.log:
+          format: "I Feel keret elküldve: %d C"
+          args: ['t']
+      - lambda: |-
+          id(last_sent_ms) = millis();
+          id(has_sent) = true;
+          id(ifeel_last_sent).publish_state(t);
+          id(ifeel_elapsed).publish_state(0);
+
+  # A szenzor értékét + az offsetet kerekíti, és elküldi, ha érvényes
+  - id: send_ifeel_sensor
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: |-
+              float raw = id(room_temp).state;
+              float off = id(ifeel_offset).state;
+              if (std::isnan(raw)) return false;
+              if (std::isnan(off)) off = 0;
+              float adj = raw + off;
+              return adj > 5 && adj < 45;
+          then:
+            - script.execute:
+                id: send_ifeel_frame
+                t: !lambda |-
+                  float off = id(ifeel_offset).state;
+                  if (std::isnan(off)) off = 0;
+                  return (int) lroundf(id(room_temp).state + off);
+          else:
+            - logger.log:
+                level: WARN
+                format: "I Feel: a szenzor értéke érvénytelen, nem küldök keretet"
+
+interval:
+  - interval: 2min
+    then:
+      - script.execute: send_ifeel_sensor
